@@ -78,7 +78,8 @@ class LitAutoEncoder(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=5e-4)
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 0.97048695039)
+        return [optimizer], [{"scheduler": scheduler, "interval": "epoch"}]
 
     def training_step(self, train_batch, batch_idx):
         x = train_batch
