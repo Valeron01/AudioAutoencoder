@@ -8,30 +8,45 @@ from torchaudio import transforms
 
 def audio_files_to_mel_spectrogram(
         paths: typing.List[str],
-        target_sample_rate: int = 16_000,
-        verbose: bool = True
+        sample_rate=22500,
+        n_fft=1024,
+        n_mels=192,
+        win_length=1024,
+        hop_length=256,
+        verbose: bool = True,
+        seconds_split: int = 1800
 ) -> torch.Tensor:
     assert len(paths) != 0
+
+    mel_spectrogram_transform = transforms.MelSpectrogram(
+        sample_rate=sample_rate,
+        n_fft=n_fft,
+        n_mels=n_mels,
+        win_length=win_length,
+        hop_length=hop_length,
+    ).cuda()
 
     results = []
     total_duration = 0
     for path in paths:
         if verbose:
             print("Reading file: ", path)
-        waveform, sample_rate = torchaudio.load(path)
-        total_duration += waveform.shape[-1] / sample_rate
-        waveform = waveform[[0], :].cuda()
-        waveform = transforms.Resample(sample_rate, new_freq=target_sample_rate).cuda()(waveform)
+        waveform, initial_sample_rate = torchaudio.load(path)
 
-        spectrogram = transforms.Spectrogram(n_fft=1157).cuda()(waveform)
+        waveforms = torch.split(waveform, sample_rate * 1800, -1)
 
-        mel_spectrogram = transforms.MelScale(
-            n_mels=256, n_stft=579, sample_rate=target_sample_rate
-        ).cuda()(spectrogram)
+        for waveform in waveforms:
+            print(waveform.shape)
 
-        mel_spectrogram = transforms.AmplitudeToDB("db")(mel_spectrogram)
+            total_duration += waveform.shape[-1] / sample_rate
+            waveform = waveform[[0], :].cuda()
+            waveform = transforms.Resample(initial_sample_rate, new_freq=sample_rate).cuda()(waveform)
 
-        results.append(mel_spectrogram.cpu())
+            mel_spectrogram = mel_spectrogram_transform(waveform)
+
+            spectrogram = transforms.AmplitudeToDB("db")(mel_spectrogram)
+
+            results.append(spectrogram.cpu())
 
     if verbose:
         print(total_duration)

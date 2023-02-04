@@ -12,7 +12,7 @@ import torch.utils.data
 from callbacks import TestCallback
 
 dataset = audio_files_to_mel_spectrogram([
-    r"C:\Users\elect\PycharmProjects\AutoEncoder\audio\audio.wav",
+    r"C:\Users\elect\PycharmProjects\ExperimentsWithAudio\audio\audio.wav",
     r"D:\NeuralNetsProjects\audioGan\dataset\ncs_small_16384.wav",
     r"D:\NeuralNetsProjects\audioGan\dataset\ls_16384.wav",
     r"D:\NeuralNetsProjects\audioGan\dataset\bach_classic.wav",

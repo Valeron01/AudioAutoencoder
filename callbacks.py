@@ -10,11 +10,39 @@ from torchaudio import transforms
 
 
 class TestCallback(Callback):
-    def __init__(self, data_loader, results_path, min_value, max_value):
+    def __init__(
+            self, data_loader, results_path, min_value, max_value,
+            sample_rate=22500,
+            n_fft=1024,
+            n_mels=192,
+            win_length=1024,
+            hop_length=256,
+            n_iter=1204
+    ):
+        self.hop_length = hop_length
+        self.win_length = win_length
+        self.n_mels = n_mels
+        self.n_fft = n_fft
         self.min_value = min_value
         self.max_value = max_value
         self.data_loader = data_loader
         self.results_path = results_path
+        self.sample_rate = sample_rate
+        self.n_iter = n_iter
+
+        self.mel_spectrogram_to_audio = torch.nn.Sequential(
+            transforms.InverseMelScale(
+                n_stft=self.n_fft // 2 + 1,
+                n_mels=self.n_mels,
+                sample_rate=self.sample_rate,
+            ),
+            transforms.GriffinLim(
+                n_fft=self.n_fft,
+                n_iter=self.n_iter,
+                win_length=self.win_length,
+                hop_length=self.hop_length
+            )
+        )
 
     def on_train_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
         count = 0
@@ -37,10 +65,9 @@ class TestCallback(Callback):
 
                 image = image * (self.max_value - self.min_value) + self.min_value
                 mel_spectrogram = torchaudio.functional.DB_to_amplitude(image.cuda(), 1, 0.5)
-                inverse_mel = transforms.InverseMelScale(n_mels=256, n_stft=579).cuda()(mel_spectrogram)
-                griffin_lim = transforms.GriffinLim(n_fft=1157, n_iter=1024).cuda()(inverse_mel)
+                restored_audio = self.mel_spectrogram_to_audio.to(pl_module.device)(mel_spectrogram)
 
-                torchaudio.save(result_path, griffin_lim.cpu(), 16_000)
+                torchaudio.save(result_path, restored_audio.cpu(), self.sample_rate)
 
                 count += 1
 
