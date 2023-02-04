@@ -64,9 +64,9 @@ class LitAutoEncoder(pl.LightningModule):
             nn.ConvTranspose2d(128, 64, 2, 2),  # 128
 
             ResBlock(64, 64),
-            nn.ConvTranspose2d(64, 32, 2, 2),  # 256
+            nn.ConvTranspose2d(64, 64, 2, 2),  # 256
 
-            ResBlock(32, 32),
+            ResBlock(64, 32),
             ResBlock(32, 32),
             nn.LeakyReLU(inplace=True),
 

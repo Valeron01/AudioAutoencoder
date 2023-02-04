@@ -16,6 +16,8 @@ def audio_files_to_mel_spectrogram(
     results = []
     total_duration = 0
     for path in paths:
+        if verbose:
+            print("Reading file: ", path)
         waveform, sample_rate = torchaudio.load(path)
         total_duration += waveform.shape[-1] / sample_rate
         waveform = waveform[[0], :].cuda()

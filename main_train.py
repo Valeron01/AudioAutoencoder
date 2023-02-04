@@ -15,8 +15,15 @@ dataset = audio_files_to_mel_spectrogram([
     r"C:\Users\elect\PycharmProjects\AutoEncoder\audio\audio.wav",
     r"D:\NeuralNetsProjects\audioGan\dataset\ncs_small_16384.wav",
     r"D:\NeuralNetsProjects\audioGan\dataset\ls_16384.wav",
-    r"D:\NeuralNetsProjects\audioGan\dataset\bach_classic.wav"
+    r"D:\NeuralNetsProjects\audioGan\dataset\bach_classic.wav",
+    r"H:\audio_dataset\yandex_0.wav",
+    r"H:\audio_dataset\yandex_1.wav",
+    r"H:\audio_dataset\yandex_2.wav",
+    r"H:\audio_dataset\yandex_3.wav",
+    r"H:\audio_dataset\yandex_4.wav",
 ])
+
+print(dataset.shape)
 
 min_value = dataset.min()
 max_value = dataset.max()
@@ -27,6 +34,9 @@ torch.manual_seed(0)
 random.seed(0)
 train_dataset = dataset[..., :int(dataset.shape[-1] * 0.9)]
 validation_dataset = dataset[..., int(dataset.shape[-1] * 0.9):]
+
+print("train_dataset size is: ", train_dataset.shape)
+print("validation_dataset size is: ", validation_dataset.shape)
 
 train_dataset = AudioDataset(train_dataset, 256)
 validation_dataset = AudioDataset(validation_dataset, 256)
