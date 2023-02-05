@@ -30,6 +30,7 @@ max_value = dataset.max()
 
 dataset = (dataset - min_value) / (max_value - min_value)
 
+
 torch.manual_seed(0)
 random.seed(0)
 train_dataset = dataset[..., :int(dataset.shape[-1] * 0.9)]
@@ -39,7 +40,9 @@ print("train_dataset size is: ", train_dataset.shape)
 print("validation_dataset size is: ", validation_dataset.shape)
 
 train_dataset = AudioDataset(train_dataset, 256)
-validation_dataset = AudioDataset(validation_dataset, 256)
+validation_dataset = AudioDataset(
+    validation_dataset, 256, random_access=True
+)
 
 
 train_loader = torch.utils.data.DataLoader(train_dataset, shuffle=True, batch_size=16)

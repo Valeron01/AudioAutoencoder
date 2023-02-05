@@ -17,7 +17,7 @@ class TestCallback(Callback):
             n_mels=192,
             win_length=1024,
             hop_length=256,
-            n_iter=1204
+            n_iter=1024
     ):
         self.hop_length = hop_length
         self.win_length = win_length
@@ -41,8 +41,8 @@ class TestCallback(Callback):
                 n_iter=self.n_iter,
                 win_length=self.win_length,
                 hop_length=self.hop_length
-            )
-        )
+            ),
+        ).cuda()
 
     def on_train_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
         count = 0
@@ -54,7 +54,7 @@ class TestCallback(Callback):
             results = torch.cat([batch, results], dim=-1)
 
             for spectrogram_index in range(results.shape[0]):
-                image = results[spectrogram_index]
+                image = results[spectrogram_index].cuda()
                 result_path = os.path.join(
                     self.results_path,
                     f"{trainer.logger.name}_v{trainer.logger.version}",
@@ -65,7 +65,8 @@ class TestCallback(Callback):
 
                 image = image * (self.max_value - self.min_value) + self.min_value
                 mel_spectrogram = torchaudio.functional.DB_to_amplitude(image.cuda(), 1, 0.5)
-                restored_audio = self.mel_spectrogram_to_audio.to(pl_module.device)(mel_spectrogram)
+
+                restored_audio = self.mel_spectrogram_to_audio(mel_spectrogram)
 
                 torchaudio.save(result_path, restored_audio.cpu(), self.sample_rate)
 

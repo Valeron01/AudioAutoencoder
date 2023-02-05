@@ -31,14 +31,12 @@ def audio_files_to_mel_spectrogram(
     for path in paths:
         if verbose:
             print("Reading file: ", path)
-        waveform, initial_sample_rate = torchaudio.load(path)
+        initial_waveform, initial_sample_rate = torchaudio.load(path)
 
-        waveforms = torch.split(waveform, sample_rate * 1800, -1)
+        waveforms = torch.split(initial_waveform, sample_rate * seconds_split, -1)
 
         for waveform in waveforms:
-            print(waveform.shape)
-
-            total_duration += waveform.shape[-1] / sample_rate
+            total_duration += waveform.shape[-1] / initial_sample_rate
             waveform = waveform[[0], :].cuda()
             waveform = transforms.Resample(initial_sample_rate, new_freq=sample_rate).cuda()(waveform)
 

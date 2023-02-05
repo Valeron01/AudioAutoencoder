@@ -1,5 +1,6 @@
 import typing
 
+import numpy as np
 import torch
 from torch import nn
 import pytorch_lightning as pl
@@ -34,37 +35,35 @@ class LitAutoEncoder(pl.LightningModule):
         super(LitAutoEncoder, self).__init__()
 
         self.encoder = nn.Sequential(
-            nn.Conv2d(1, 64, 15, 1, 7),  # 256
+            nn.Conv2d(1, 64, 15, 1, 7),  # 192
             nn.ReLU(inplace=True),
 
-            ResBlock(64, 128, (2, 2)),  # 128
-            ResBlock(128, 256, (2, 2)),  # 64
-            ResBlock(256, 512, (2, 2)),  # 32
-            ResBlock(512, 512, (2, 2)),  # 16
-            ResBlock(512, 512, (2, 2)),  # 8
-            # ResBlock(1024, 1024, (2, 2)),  # 4
-            # ResBlock(1024, 1024),
-            nn.GELU()
+            ResBlock(64, 128, (2, 2)),  # 96
+            ResBlock(128, 256, (2, 2)),  # 48
+            ResBlock(256, 512, (2, 2)),  # 24
+            ResBlock(512, 512, (2, 2)),  # 128
+            ResBlock(512, 512, (2, 1)),  # 6
+
+            ResBlock(512, 256),  # 6
         )
 
         self.decoder = nn.Sequential(
-            # ResBlock(1024, 1024),  # 4
-            # nn.ConvTranspose2d(1024, 1024, 2, 2),  # 8
+            ResBlock(256, 512),
 
             ResBlock(512, 512),
-            nn.ConvTranspose2d(512, 512, 2, 2),  # 16
+            nn.ConvTranspose2d(512, 512, (2, 1), (2, 1)),  # 12
 
             ResBlock(512, 512),
-            nn.ConvTranspose2d(512, 256, 2, 2),   # 32
+            nn.ConvTranspose2d(512, 256, 2, 2),   # 24
 
             ResBlock(256, 256),
-            nn.ConvTranspose2d(256, 128, 2, 2),   # 64
+            nn.ConvTranspose2d(256, 128, 2, 2),   # 48
 
             ResBlock(128, 128),
-            nn.ConvTranspose2d(128, 64, 2, 2),  # 128
+            nn.ConvTranspose2d(128, 64, 2, 2),  # 96
 
             ResBlock(64, 64),
-            nn.ConvTranspose2d(64, 64, 2, 2),  # 256
+            nn.ConvTranspose2d(64, 64, 2, 2),  # 192
 
             ResBlock(64, 32),
             ResBlock(32, 32),
@@ -74,7 +73,9 @@ class LitAutoEncoder(pl.LightningModule):
         )
 
     def forward(self, x):
-        return self.decoder(self.encoder(x))
+        encoded = self.encoder(x)
+        print(encoded.shape)
+        return self.decoder(encoded)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=5e-4)
@@ -99,6 +100,6 @@ class LitAutoEncoder(pl.LightningModule):
 
 if __name__ == '__main__':
     ae = LitAutoEncoder()
-    inputs = torch.randn(10, 1, 256, 256)
+    inputs = torch.randn(10, 1, 192, 256)
     result = ae(inputs)
     print(result.shape)
