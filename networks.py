@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from torch import nn
 import pytorch_lightning as pl
+import pytorch_lightning.utilities.model_summary
 from torch.nn import functional as F
 
 
@@ -43,12 +44,16 @@ class LitAutoEncoder(pl.LightningModule):
             ResBlock(256, 512, (2, 2)),  # 24
             ResBlock(512, 512, (2, 2)),  # 128
             ResBlock(512, 512, (2, 1)),  # 6
+            ResBlock(512, 512, (2, 1)),  # 6
 
             ResBlock(512, 256),  # 6
         )
 
         self.decoder = nn.Sequential(
             ResBlock(256, 512),
+
+            ResBlock(512, 512),
+            nn.ConvTranspose2d(512, 512, (2, 1), (2, 1)),  # 12
 
             ResBlock(512, 512),
             nn.ConvTranspose2d(512, 512, (2, 1), (2, 1)),  # 12
@@ -100,6 +105,7 @@ class LitAutoEncoder(pl.LightningModule):
 
 if __name__ == '__main__':
     ae = LitAutoEncoder()
+    print(pl.utilities.model_summary.ModelSummary(ae))
     inputs = torch.randn(10, 1, 192, 256)
     result = ae(inputs)
     print(result.shape)

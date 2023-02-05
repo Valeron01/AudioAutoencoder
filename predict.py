@@ -38,7 +38,7 @@ mel_spectrogram_transform = transforms.MelSpectrogram(
 ).cuda()
 
 network = networks.LitAutoEncoder().load_from_checkpoint(
-    "./best_checkpoints/simplest_aae_v31/epoch=22-step=21712.ckpt"
+    "./best_checkpoints/simplest_aae_v32/epoch=45-step=43424.ckpt"
 ).cuda()
 
 waveform, initial_sample_rate = torchaudio.load(
@@ -59,7 +59,7 @@ mel_spectrogram = (mel_spectrogram - min_value) / (max_value - min_value)
 
 print(mel_spectrogram.shape)
 
-mel_spectrogram = mel_spectrogram[None, ..., :256].cuda()
+mel_spectrogram = mel_spectrogram[None, ..., :256*5].cuda()
 
 with torch.no_grad():
     decoded_sg = network(mel_spectrogram)
@@ -73,5 +73,5 @@ decoded_sg = torchaudio.functional.DB_to_amplitude(decoded_sg, 1, 0.5)
 
 audio = mel_spectrogram_to_audio(decoded_sg[0])
 
-torchaudio.save(f"./restored_v31.wav", audio.cpu(), sample_rate)
+torchaudio.save(f"./restored_v32.wav", audio.cpu(), sample_rate)
 print(audio.shape)
