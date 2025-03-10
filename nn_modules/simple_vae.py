@@ -75,43 +75,44 @@ class TransformerBlock(nn.Module):
 class Encoder(nn.Module):
     def __init__(
             self,
-            inner_channels,
+            n_channels_list,
             kernel_sizes, strides,
             n_transformer_blocks,
             n_heads,
             z_dim
     ):
         super().__init__()
-        assert len(kernel_sizes) == len(strides)
+        assert len(kernel_sizes) == len(strides) == (len(n_channels_list) - 1)
 
         self.stem = nn.Sequential(
-            nn.Conv1d(1, inner_channels, 17, 1, "same"),
-            nn.GroupNorm(4, inner_channels),
+            nn.Conv1d(1, n_channels_list[0], 9, 1, "same"),
+            nn.BatchNorm1d(n_channels_list[0]),
             nn.LeakyReLU(inplace=True)
         )
 
         self.downsample_blocks = nn.Sequential(
-            LearnableConvolutionalEmbedding(inner_channels, 129, 16),
-            *[ResidualBlock(inner_channels, inner_channels, stride, kernel_size) for stride, kernel_size in zip(
-                strides, kernel_sizes
-            )]
+            *[ResidualBlock(in_channels, out_channels, stride, kernel_size) for
+              stride, kernel_size, in_channels, out_channels in zip(
+                    strides, kernel_sizes, n_channels_list[:-1], n_channels_list[1:]
+                )],
+            LearnableConvolutionalEmbedding(n_channels_list[-1], 129, 16),
         )
         self.transformer = nn.Sequential(
-            *[TransformerBlock(inner_channels, n_heads) for _ in range(n_transformer_blocks)])
-        self.conv_out = nn.Conv1d(inner_channels, z_dim * 2, 1, 1)
+            *[TransformerBlock(n_channels_list[-1], n_heads) for _ in range(n_transformer_blocks)])
+        self.conv_out = nn.Conv1d(n_channels_list[-1], z_dim, 1, 1)
 
     def forward(self, x):
         stem = self.stem(x)
         conv_features = self.downsample_blocks(stem)
         transformer = self.transformer(conv_features)
-        z = self.conv_out(transformer).chunk(2, 1)
+        z = self.conv_out(transformer)
         return z
 
 
 class Decoder(nn.Module):
     def __init__(
             self,
-            inner_channels,
+            n_channels_list,
             kernel_sizes, strides,
             n_transformer_blocks,
             n_heads,
@@ -121,22 +122,24 @@ class Decoder(nn.Module):
         assert len(kernel_sizes) == len(strides)
 
         self.stem = nn.Sequential(
-            nn.Conv1d(z_dim, inner_channels, 1, 1),
-            nn.GroupNorm(4, inner_channels),
+            nn.Conv1d(z_dim, n_channels_list[0], 1, 1),
+            nn.GroupNorm(4, n_channels_list[0]),
             nn.LeakyReLU(inplace=True)
         )
         self.transformer = nn.Sequential(
-            LearnableConvolutionalEmbedding(inner_channels, 7, 16),
-            *[TransformerBlock(inner_channels, n_heads) for _ in range(n_transformer_blocks)]
+            LearnableConvolutionalEmbedding(n_channels_list[0], 7, 16),
+            *[TransformerBlock(n_channels_list[0], n_heads) for _ in range(n_transformer_blocks)]
         )
 
         self.upsample_blocks = nn.Sequential(
-            *[ResidualBlock(inner_channels, inner_channels, stride, kernel_size) for stride, kernel_size in zip(
-                strides, kernel_sizes
-            )]
+            *[
+                ResidualBlock(in_channels, out_channels, stride, kernel_size) for
+                stride, kernel_size, in_channels, out_channels in zip(
+                    strides, kernel_sizes, n_channels_list[:-1], n_channels_list[1:]
+                )]
         )
 
-        self.conv_out = nn.Conv1d(inner_channels, 1, 15, 1, padding="same")
+        self.conv_out = nn.Conv1d(n_channels_list[-1], 1, 15, 1, padding="same")
 
     def forward(self, x):
         stem = self.stem(x)
@@ -146,36 +149,37 @@ class Decoder(nn.Module):
         return z
 
 
-class AudioAutoencoder(nn.Module):
+class AudioVAE(nn.Module):
     def __init__(
-            self, inner_channels,
+            self,
+            n_channels_list,
             kernel_sizes, strides,
             n_transformer_blocks,
             n_heads,
             z_dim
     ):
         super().__init__()
-        self.encoder = Encoder(inner_channels, kernel_sizes, strides, n_transformer_blocks, n_heads, z_dim)
+        self.encoder = Encoder(n_channels_list, kernel_sizes, strides, n_transformer_blocks, n_heads, z_dim * 2)
         upsample_strides = [1 / i for i in reversed(strides)]
         upsample_kernels = list(reversed(kernel_sizes))
 
-        self.decoder = Decoder(inner_channels, upsample_kernels, upsample_strides, n_transformer_blocks, n_heads, z_dim)
+        self.decoder = Decoder(n_channels_list, upsample_kernels, upsample_strides, n_transformer_blocks, n_heads, z_dim)
 
     def encode(self, x):
-        return self.encoder(x[:, None])
+        return self.encoder(x[:, None]).chunk(2, 1)
 
     def decode(self, z):
         return self.decoder(z).squeeze(1)
 
 
 if __name__ == '__main__':
-    model = AudioAutoencoder(512, [11, 3, 3, 3, 3, 3, 3], [5, 2, 2, 2, 2, 2, 2], 5, 8, 8).cuda().eval()
+    model = AudioVAE([128, 128, 256, 256, 256, 512, 512, 512], [11, 3, 3, 3, 3, 3, 3], [5, 2, 2, 2, 2, 2, 2], 5, 8, 8).cuda().eval()
     with torch.autocast("cuda", torch.float16), torch.nn.attention.sdpa_kernel(
-        torch.nn.attention.SDPBackend.FLASH_ATTENTION
+            torch.nn.attention.SDPBackend.FLASH_ATTENTION
     ):
         z = model.encode(torch.rand(4, 16000 * 12).cuda())[0]
         print(z.shape)
         decoded = model.decode(z)
         print(decoded.shape)
         print(decoded.mean())
-
+        input()

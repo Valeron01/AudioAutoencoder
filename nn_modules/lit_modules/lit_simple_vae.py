@@ -1,13 +1,13 @@
 import lightning as pl
 import torch.optim
 
-from nn_modules.simple_vae import AudioAutoencoder
+from nn_modules.simple_vae import AudioVAE
 
 
 class LitSimpleVAE(pl.LightningModule):
     def __init__(
             self,
-            inner_channels,
+            n_channels_list,
             kernel_sizes, strides,
             n_transformer_blocks,
             n_heads,
@@ -20,7 +20,7 @@ class LitSimpleVAE(pl.LightningModule):
         self.lr = lr
         self.kl_weight = kl_weight
         self.weight_decay = weight_decay
-        self.autoencoder = AudioAutoencoder(inner_channels, kernel_sizes, strides, n_transformer_blocks, n_heads, z_dim)
+        self.autoencoder = AudioVAE(n_channels_list, kernel_sizes, strides, n_transformer_blocks, n_heads, z_dim)
         self.automatic_optimization = True
         self.save_hyperparameters()
 

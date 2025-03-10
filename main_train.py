@@ -10,7 +10,12 @@ from nn_modules.lit_modules.lit_simple_vae import LitSimpleVAE
 
 
 def main():
-    train_audios = glob.glob("/mnt/LxData/AudioDatasetWAV/*.*")
+    train_audios = glob.glob(
+        "/mnt/LxData/AudioDatasetWAV/*.*"
+    ) + glob.glob(
+        "/mnt/LxData/*/CroppedVideos25FPS/*/*.*"
+    )
+
     validation_audios = ["/mnt/LxData/AudioDatasetWAV/Audio000013.wav"]
     train_audios = [i for i in train_audios if i not in validation_audios]
     train_dataset_length = 10000
@@ -19,10 +24,10 @@ def main():
     samples_count = 16_000 * 12
     target_sample_rate = 16_000
     tensorboard_folder_path = "/mnt/LxData/AudioVAE"
-    inner_channels = 384
+    n_channels_list = [128, 128, 128, 256, 256, 512, 512, 512]
     kernel_sizes = [11, 3, 3, 3, 3, 3, 3]
     strides = [5, 2, 2, 2, 2, 2, 2]
-    n_transformer_blocks = 5
+    n_transformer_blocks = 4
     n_heads = 8
     z_dim = 16
     kl_weight = 1e-5
@@ -52,7 +57,7 @@ def main():
     )
 
     model = LitSimpleVAE(
-        inner_channels=inner_channels,
+        n_channels_list=n_channels_list,
         kernel_sizes=kernel_sizes,
         strides=strides,
         n_transformer_blocks=n_transformer_blocks,
