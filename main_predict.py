@@ -2,8 +2,9 @@ import torch
 import torchaudio
 
 from nn_modules.lit_modules.lit_simple_vae import LitSimpleVAE
+from nn_modules.lit_modules.lit_vae_gan import LitSimpleVAEGAN
 
-model = LitSimpleVAE.load_from_checkpoint("/mnt/LxData/AudioVAE/checkpoints/version_031/last.ckpt").eval().requires_grad_(False)
+model = LitSimpleVAEGAN.load_from_checkpoint("/mnt/LxData/AudioVAEGAN/checkpoints/version_000/last.ckpt").eval().requires_grad_(False)
 audio, audio_sr = torchaudio.load("/mnt/LxData/AudioDatasetWAV/Audio000013.wav")
 audio = torchaudio.functional.resample(audio, audio_sr, 16_000)
 
@@ -22,4 +23,4 @@ decoded = model.autoencoder.decode(sample)
 print(decoded.mean())
 print(mean.shape)
 print(decoded.shape)
-torchaudio.save("/mnt/LxData/AudioVAE/Sandbox/ValidationTest_eval_sampled2.wav", decoded.cpu(), inner_sr)
+torchaudio.save("/mnt/LxData/AudioVAE/Sandbox/ValidationTest_eval_sampled_gan.wav", decoded.cpu(), inner_sr)

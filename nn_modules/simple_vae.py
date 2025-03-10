@@ -5,12 +5,13 @@ from torch import nn
 
 def get_up_down_block(in_channels, out_channels, stride, kernel_size):
     if stride < 1:
-        upsample_rate = 1 / stride
+        upsample_rate = int(1 / stride)
         return nn.Sequential(
             nn.Upsample(scale_factor=upsample_rate),
             nn.Conv1d(in_channels, out_channels, kernel_size, stride=1, padding="same")
         )
     else:
+        stride = int(stride)
         return nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding=kernel_size // 2)
 
 
@@ -101,12 +102,27 @@ class Encoder(nn.Module):
             *[TransformerBlock(n_channels_list[-1], n_heads) for _ in range(n_transformer_blocks)])
         self.conv_out = nn.Conv1d(n_channels_list[-1], z_dim, 1, 1)
 
-    def forward(self, x):
-        stem = self.stem(x)
-        conv_features = self.downsample_blocks(stem)
-        transformer = self.transformer(conv_features)
-        z = self.conv_out(transformer)
-        return z
+    def forward(self, x, return_features=False):
+        if not return_features:
+            stem = self.stem(x)
+            conv_features = self.downsample_blocks(stem)
+            transformer = self.transformer(conv_features)
+            z = self.conv_out(transformer)
+            return z
+        else:
+            stem = self.stem(x)
+            intermediate_features = [stem]
+            block_result = stem
+            for block in self.downsample_blocks:
+                block_result = block(block_result)
+                intermediate_features.append(block_result)
+
+            for block in self.transformer:
+                block_result = block(block_result)
+                intermediate_features.append(block_result)
+            z = self.conv_out(block_result)
+
+            return z, intermediate_features
 
 
 class Decoder(nn.Module):
@@ -173,13 +189,20 @@ class AudioVAE(nn.Module):
 
 
 if __name__ == '__main__':
-    model = AudioVAE([128, 128, 256, 256, 256, 512, 512, 512], [11, 3, 3, 3, 3, 3, 3], [5, 2, 2, 2, 2, 2, 2], 5, 8, 8).cuda().eval()
+    n_channels_list = [64, 128, 128, 256, 256, 384, 384, 512, 512, 512, 768, 768, 768, 768]
+    strides = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 2]
+    kernel_sizes = [3] * len(strides)
+    model = AudioVAE(n_channels_list, kernel_sizes, strides, 1, 8, 3).cuda().eval()
     with torch.autocast("cuda", torch.float16), torch.nn.attention.sdpa_kernel(
             torch.nn.attention.SDPBackend.FLASH_ATTENTION
     ):
-        z = model.encode(torch.rand(4, 16000 * 12).cuda())[0]
-        print(z.shape)
+        source = torch.rand(4, 16384 * 6).cuda()
+        z = model.encode(source)[0]
         decoded = model.decode(z)
+        print(z.shape)
         print(decoded.shape)
         print(decoded.mean())
-        input()
+        print(16384 * 12)
+        assert source.shape == decoded.shape
+        print(decoded.numel() / z.numel())
+        print(decoded.shape[1] / z.shape[2])
