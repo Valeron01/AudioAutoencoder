@@ -24,8 +24,8 @@ def main():
     strides = [5, 2, 2, 2, 2, 2, 2]
     n_transformer_blocks = 5
     n_heads = 8
-    z_dim = 8
-    kl_weight = 1e-6
+    z_dim = 16
+    kl_weight = 1e-5
     lr = 7e-5
     weight_decay = 0.01
 
@@ -37,7 +37,7 @@ def main():
         train_dataset, batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True
     )
     val_dataloader = DataLoader(
-        train_dataset, batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True
+        validation_dataset, batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True
     )
 
     logger = TensorBoardLogger(tensorboard_folder_path)

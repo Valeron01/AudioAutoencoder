@@ -20,12 +20,12 @@ class ResidualBlock(nn.Module):
         assert kernel_size % 2 == 1
         self.block = nn.Sequential(
             get_up_down_block(in_channels, out_channels, stride, kernel_size),
-            nn.GroupNorm(1, out_channels),
-            nn.SiLU(inplace=True),
+            nn.BatchNorm1d(out_channels),
+            nn.LeakyReLU(inplace=True),
 
             nn.Conv1d(out_channels, out_channels, kernel_size, 1, padding=kernel_size // 2),
             nn.BatchNorm1d(out_channels),
-            nn.SiLU(inplace=True)
+            nn.LeakyReLU(inplace=True)
         )
         self.identity = nn.Identity() if in_channels == out_channels and stride == 1 else get_up_down_block(
             in_channels, out_channels, stride, kernel_size
@@ -54,7 +54,7 @@ class TransformerBlock(nn.Module):
         self.conv_out = nn.Sequential(
             nn.Conv1d(inner_channels, inner_channels, 1),
             nn.GroupNorm(1, inner_channels),
-            nn.SiLU(inplace=True)
+            nn.LeakyReLU(inplace=True)
         )
 
     def forward(self, x):
@@ -87,7 +87,7 @@ class Encoder(nn.Module):
         self.stem = nn.Sequential(
             nn.Conv1d(1, inner_channels, 17, 1, "same"),
             nn.GroupNorm(4, inner_channels),
-            nn.SiLU(inplace=True)
+            nn.LeakyReLU(inplace=True)
         )
 
         self.downsample_blocks = nn.Sequential(
@@ -123,7 +123,7 @@ class Decoder(nn.Module):
         self.stem = nn.Sequential(
             nn.Conv1d(z_dim, inner_channels, 1, 1),
             nn.GroupNorm(4, inner_channels),
-            nn.SiLU(inplace=True)
+            nn.LeakyReLU(inplace=True)
         )
         self.transformer = nn.Sequential(
             LearnableConvolutionalEmbedding(inner_channels, 7, 16),
@@ -169,13 +169,13 @@ class AudioAutoencoder(nn.Module):
 
 
 if __name__ == '__main__':
-    model = AudioAutoencoder(512, [11, 3, 3, 3, 3, 3, 3], [5, 2, 2, 2, 2, 2, 2], 5, 8, 8).cuda()
+    model = AudioAutoencoder(512, [11, 3, 3, 3, 3, 3, 3], [5, 2, 2, 2, 2, 2, 2], 5, 8, 8).cuda().eval()
     with torch.autocast("cuda", torch.float16), torch.nn.attention.sdpa_kernel(
         torch.nn.attention.SDPBackend.FLASH_ATTENTION
     ):
-        z = model.encode(torch.rand(4, 1, 16000 * 12).cuda())[0]
+        z = model.encode(torch.rand(4, 16000 * 12).cuda())[0]
         print(z.shape)
         decoded = model.decode(z)
         print(decoded.shape)
-        decoded.mean().backward()
+        print(decoded.mean())
 

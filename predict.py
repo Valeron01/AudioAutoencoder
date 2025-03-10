@@ -1,77 +1,26 @@
 import torch
 import torchaudio
-from torchaudio import transforms
 
-import networks
+from nn_modules.lit_modules.lit_simple_vae import LitSimpleVAE
 
-sample_rate = 22500
-n_fft = 1024
-n_mels = 192
-win_length = 1024
-hop_length = 256
-n_iter = 1024
-
-min_value = -200
-max_value = 96.4569
-
-mel_spectrogram_to_audio = torch.nn.Sequential(
-    transforms.InverseMelScale(
-        n_stft=n_fft // 2 + 1,
-        n_mels=n_mels,
-        sample_rate=sample_rate,
-    ),
-    transforms.GriffinLim(
-        n_fft=n_fft,
-        n_iter=n_iter,
-        win_length=win_length,
-        hop_length=hop_length
-    )
-).cuda()
+model = LitSimpleVAE.load_from_checkpoint("/mnt/LxData/AudioVAE/checkpoints/version_010/last.ckpt").eval().requires_grad_(False)
+audio, audio_sr = torchaudio.load("/mnt/LxData/AudioDatasetWAV/Audio000013.wav")
+audio = torchaudio.functional.resample(audio, audio_sr, 16_000)
 
 
-mel_spectrogram_transform = transforms.MelSpectrogram(
-    sample_rate=sample_rate,
-    n_fft=n_fft,
-    n_mels=n_mels,
-    win_length=win_length,
-    hop_length=hop_length,
-).cuda()
 
-network = networks.LitAutoEncoder().load_from_checkpoint(
-    "./best_checkpoints/simplest_aae_v32/epoch=45-step=43424.ckpt"
-).cuda()
+start_time = 60
+sample_length = 12
+inner_sr = 16_000
+audio_sample = audio[0, start_time * inner_sr:start_time * inner_sr + sample_length * inner_sr]
 
-waveform, initial_sample_rate = torchaudio.load(
-    r"C:\Users\elect\PycharmProjects\AudioDeepFake\voices\JB\jb_0.wav",
-    normalize=True
-)
-waveform = waveform[[0], initial_sample_rate*670:initial_sample_rate * 700].cuda()
-
-
-waveform = transforms.Resample(orig_freq=initial_sample_rate, new_freq=sample_rate).cuda()(waveform)
-print(waveform.shape)
-
-
-mel_spectrogram = mel_spectrogram_transform(waveform)
-
-mel_spectrogram = transforms.AmplitudeToDB("db")(mel_spectrogram)
-mel_spectrogram = (mel_spectrogram - min_value) / (max_value - min_value)
-
-print(mel_spectrogram.shape)
-
-mel_spectrogram = mel_spectrogram[None, ..., :256*5].cuda()
-
-with torch.no_grad():
-    decoded_sg = network(mel_spectrogram)
-print(decoded_sg.shape)
-
-# decoded_sg = mel_spectrogram
-
-decoded_sg = decoded_sg * (max_value - min_value) + min_value
-decoded_sg = torchaudio.functional.DB_to_amplitude(decoded_sg, 1, 0.5)
-
-
-audio = mel_spectrogram_to_audio(decoded_sg[0])
-
-torchaudio.save(f"./restored_v32.wav", audio.cpu(), sample_rate)
-print(audio.shape)
+audio_sample = audio_sample[None].cuda()
+mean, log_var = model.autoencoder.encode(audio_sample)
+std = (log_var / 2).exp()
+# sample = mean + torch.randn_like(std) * std
+sample = mean
+decoded = model.autoencoder.decode(sample)
+print(decoded.mean())
+print(mean.shape)
+print(decoded.shape)
+torchaudio.save("/mnt/LxData/AudioVAE/Sandbox/ValidationTest_eval.wav", decoded.cpu(), inner_sr)
