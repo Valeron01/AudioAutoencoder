@@ -12,7 +12,8 @@ class AudioRawDataset(Dataset):
 
         loaded_audio, loaded_audio_sr = torchaudio.load(audio_path)
         self.loaded_audio = torchaudio.functional.resample(loaded_audio.cuda(), loaded_audio_sr, sample_rate).mean(0).cpu()
-        # self.loaded_audio = torch.nn.functional.pad(self.loaded_audio, [0, 16_000 * 13])
+        if self.loaded_audio.shape[0] < samples_count:
+            self.loaded_audio = torch.nn.functional.pad(self.loaded_audio, [0, samples_count - self.loaded_audio.shape[0]])
 
     def __len__(self):
         return self.loaded_audio.shape[0] - self.samples_count

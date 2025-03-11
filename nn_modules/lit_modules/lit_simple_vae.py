@@ -56,6 +56,6 @@ class LitSimpleVAE(pl.LightningModule):
         reconstruction_loss = torch.nn.functional.mse_loss(decoded, source_audios)
 
         total_loss = reconstruction_loss + kl_loss * self.kl_weight
-        self.log("val_reconstruction", reconstruction_loss)
+        self.log("val_reconstruction", reconstruction_loss, prog_bar=True)
         self.log("val_loss", total_loss)
         self.log("val_kl_loss", kl_loss)
