@@ -22,21 +22,21 @@ def main():
     train_dataset_length = 10000
     validation_dataset_length = 500
     batch_size = 4
-    samples_count = 16_000 * 12
-    target_sample_rate = 16_000
+    samples_count = 16_384 * 6
+    target_sample_rate = 16_384
     tensorboard_folder_path = "/mnt/LxData/AudioVAEGAN"
-    n_channels_list = [32, 32, 64, 64, 128, 128, 256, 256, 256, 256, 512, 512]
-    strides = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1]
-    kernel_sizes = [3] * len(strides)
+    n_channels_list = [64, 128, 128, 256, 256, 384, 384, 512, 512, 512, 512, 768, 768, 768]
+    strides = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1]
+    kernel_sizes = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
     n_transformer_blocks = 1
     n_heads = 8
-    z_dim = 16
+    z_dim = 2
     kl_weight = 1e-6
     lr = 5e-5
     weight_decay = 0.01
-    disc_weight = 0.5
+    disc_weight = 0.001
     feature_matching_weight = 1
-    path_to_pretrained_checkpoint = "/mnt/LxData/AudioVAE/checkpoints/version_032/last.ckpt"
+    path_to_pretrained_checkpoint = "/mnt/LxData/AudioVAE/checkpoints/version_050/last.ckpt"
 
     train_dataset, validation_dataset = build_datasets(
         train_audios, validation_audios, train_dataset_length, validation_dataset_length,
@@ -57,7 +57,7 @@ def main():
 
     trainer = pl.Trainer(
         accelerator="gpu", logger=logger, callbacks=[checkpointer], min_epochs=100,
-        precision="16-mixed", log_every_n_steps=4
+        precision="16-mixed", log_every_n_steps=4, accumulate_grad_batches=4
     )
 
     model = LitSimpleVAEGAN(

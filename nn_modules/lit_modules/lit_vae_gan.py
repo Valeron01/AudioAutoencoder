@@ -31,10 +31,11 @@ class LitSimpleVAEGAN(pl.LightningModule):
         self.save_hyperparameters()
 
     def configure_optimizers(self):
+        betas = (0.9, 0.999)
         return torch.optim.AdamW(
-            self.autoencoder.parameters(), self.lr, weight_decay=self.weight_decay
+            self.autoencoder.parameters(), self.lr, betas, weight_decay=self.weight_decay
         ), torch.optim.AdamW(
-            self.discriminator.parameters(), self.lr, weight_decay=self.weight_decay
+            self.discriminator.parameters(), self.lr, betas, weight_decay=self.weight_decay
         )
 
     def training_step(self, batch, *args, **kwargs):
@@ -80,8 +81,11 @@ class LitSimpleVAEGAN(pl.LightningModule):
             _, discriminator_real_features = self.discriminator(real_audios[:, None], return_features=True)
 
         features_loss = sum([
-            nn.functional.mse_loss(i, j) for i, j in zip(discriminator_features[4:], discriminator_real_features[4:])
-        ])
+            nn.functional.smooth_l1_loss(i, j) for i, j in zip(discriminator_features[4:], discriminator_real_features[4:])
+        ]) / len(discriminator_features)
+
+        if self.global_step <= 20:
+            loss_generator_adversarial = loss_generator_adversarial * 0
 
         total_generator_loss = (features_loss * self.feature_matching_weight +
                                 loss_generator_adversarial * self.disc_weight +

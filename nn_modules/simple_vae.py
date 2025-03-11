@@ -189,10 +189,10 @@ class AudioVAE(nn.Module):
 
 
 if __name__ == '__main__':
-    n_channels_list = [64, 128, 128, 256, 256, 384, 384, 512, 512, 512, 768, 768, 768, 768]
-    strides = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 2]
+    n_channels_list = [64, 128, 128, 256, 256, 384, 384, 512, 512, 512, 512, 768, 768, 768]
+    strides = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1]
     kernel_sizes = [3] * len(strides)
-    model = AudioVAE(n_channels_list, kernel_sizes, strides, 1, 8, 3).cuda().eval()
+    model = AudioVAE(n_channels_list, kernel_sizes, strides, 1, 8, 2).cuda().eval()
     with torch.autocast("cuda", torch.float16), torch.nn.attention.sdpa_kernel(
             torch.nn.attention.SDPBackend.FLASH_ATTENTION
     ):

@@ -15,7 +15,7 @@ def main():
     ) + glob.glob(
         "/mnt/LxData/*/CroppedVideos25FPS/*/*.*"
     )
-    train_audios = train_audios[:1]
+    # train_audios = train_audios[:1]
 
     validation_audios = ["/mnt/LxData/AudioDatasetWAV/Audio000013.wav"]
     train_audios = [i for i in train_audios if i not in validation_audios]
@@ -25,12 +25,12 @@ def main():
     samples_count = 16_384 * 6
     target_sample_rate = 16_384
     tensorboard_folder_path = "/mnt/LxData/AudioVAE"
-    n_channels_list = [64, 128, 128, 256, 256, 384, 384, 512, 512, 512, 768, 768, 768, 768]
-    strides = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 2]
-    kernel_sizes = [3] * len(strides)
+    n_channels_list = [64, 128, 128, 256, 256, 384, 384, 512, 512, 512, 512, 768, 768, 768]
+    strides = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1]
+    kernel_sizes = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
     n_transformer_blocks = 1
     n_heads = 8
-    z_dim = 16
+    z_dim = 2
     kl_weight = 1e-5
     lr = 7e-5
     weight_decay = 0.01

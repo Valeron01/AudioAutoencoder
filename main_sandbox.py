@@ -1,9 +1,11 @@
-from diffusers import AutoencoderKL
+import torch
+from torch import nn
 
-vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse")
 
-numel = 0
-for i in vae.parameters():
-    numel += i.numel()
+conv = nn. ConvTranspose1d(
+    64, 2, 3, 2, 1, 1
+)
 
-print(numel / 1e6)
+
+result = conv(torch.zeros(1, 64, 128))
+print(result.shape)
